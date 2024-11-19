@@ -10,7 +10,7 @@
 // Variables
 Scheduler userScheduler;
 painlessMesh mesh;
-
+std::map<String, int> sectionSpots;
 
 // Function declarations
 void sendMessage();
@@ -42,6 +42,13 @@ void loop() {
 // Callback for receiving messages from the mesh
 void receivedCallback(uint32_t from, String &msg) {
   Serial.printf("Received from %u: msg=%s\n", from, msg.c_str());
+  
+  int index = msg.indexOf(' ');
+  if (index != -1) {
+    String section = msg.substring(0, index);         // Extract section name
+    int spots = msg.substring(index + 1).toInt();    // Extract number of spots
+    sectionSpots[section] = spots;                   
+  }
 }
 // Callback for new connections
 void newConnectionCallback(uint32_t nodeId) {
