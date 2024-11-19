@@ -11,24 +11,32 @@
 // Trigger pin (input from Arduino)
 #define TRIGGER_PIN 5
 
+// Virtual serial RX and TX pins
+#define RX_PIN 12  // Virtual RX
+#define TX_PIN 14  // Virtual TX
+
 // Variables
 Scheduler userScheduler;
 painlessMesh mesh;
 std::map<String, int> sectionSpots;
+SoftwareSerial softSerial(RX_PIN, TX_PIN);
 
 // Function declarations
-void sendMessage();
+void sendDataToDisplay();
 void receivedCallback(uint32_t from, String &msg);
+void checkTrigger();
 void newConnectionCallback(uint32_t nodeId);
 void changedConnectionCallback();
 void nodeTimeAdjustedCallback(int32_t offset);
-void checkTrigger(); // Check trigger pin
 
 // Task for monitoring the trigger pin and sending data
 Task taskCheckTrigger(TASK_IMMEDIATE, TASK_FOREVER, &checkTrigger);
 
 void setup() {
-  Serial.begin(115200);
+  Serial.begin(115200);       // Main serial port for debugging
+  softSerial.begin(9600);     // Virtual serial port for Arduino communication
+
+  pinMode(TRIGGER_PIN, INPUT_PULLUP);
 
   // Mesh network setup
   mesh.setDebugMsgTypes(ERROR | STARTUP);  // Display errors and startup messages
@@ -45,10 +53,23 @@ void setup() {
 
 void loop() {
   mesh.update();
+  userScheduler.execute();
 }
 
 // Function definitions:
-
+// Send parking spot data to Arduino
+void sendDataToDisplay() {
+  if (!sectionSpots.empty()) {
+    for (auto const& section : sectionSpots) {
+      String message = section.first + " " + String(section.second); 
+      softSerial.println(message);                                  
+      Serial.println("Sent to Arduino: " + message);               
+    }
+    softSerial.println("END");  // Indicate the end of data
+  } else {
+    softSerial.println("No Data");  // Send message if no data is available
+  }
+}
 // Callback for receiving messages from the mesh
 void receivedCallback(uint32_t from, String &msg) {
   Serial.printf("Received from %u: msg=%s\n", from, msg.c_str());
@@ -62,14 +83,14 @@ void receivedCallback(uint32_t from, String &msg) {
 }
 // Task function to monitor the trigger pin
 void checkTrigger() {
-  static bool lastState = HIGH;           // Previous state of the trigger pin
-  bool currentState = digitalRead(TRIGGER_PIN); // Current state of the trigger pin
+  static bool lastState = HIGH;           
+  bool currentState = digitalRead(TRIGGER_PIN);
 
-  if (currentState == LOW && lastState == HIGH) { // Trigger activated
-    Serial.println("button pressed !");
+  if(currentState == LOW && lastState == HIGH){ // Trigger activated
+    sendDataToDisplay();
   }
 
-  lastState = currentState;  // Update the last state
+  lastState = currentState;
 }
 // Callback for new connections
 void newConnectionCallback(uint32_t nodeId) {
