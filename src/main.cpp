@@ -73,7 +73,7 @@ void sendDataToDisplay() {
     softSerial.println("END");  // Indicate the end of data
     sectionSpots.clear();
   } else {
-    softSerial.println("No Data");  // Send message if no data is available
+    softSerial.println("NO");  // Send message if no data is available
   }
 }
 // Callback for receiving messages from the mesh
