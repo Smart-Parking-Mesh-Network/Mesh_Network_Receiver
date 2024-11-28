@@ -71,6 +71,7 @@ void sendDataToDisplay() {
       Serial.println("Sent to Arduino: " + message);               
     }
     softSerial.println("END");  // Indicate the end of data
+    sectionSpots.clear();
   } else {
     softSerial.println("No Data");  // Send message if no data is available
   }
