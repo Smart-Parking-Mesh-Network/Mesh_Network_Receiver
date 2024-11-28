@@ -18,7 +18,12 @@
 // Variables
 Scheduler userScheduler;
 painlessMesh mesh;
-std::map<String, int> sectionSpots;
+// Struct to store received data
+struct SectionData {
+  int freeSpots = -1;
+  int entranceScore = 0;
+};
+std::map<String, SectionData> sectionSpots;
 SoftwareSerial softSerial(RX_PIN, TX_PIN);
 
 // Function declarations
@@ -61,7 +66,7 @@ void loop() {
 void sendDataToDisplay() {
   if (!sectionSpots.empty()) {
     for (auto const& section : sectionSpots) {
-      String message = section.first + " " + String(section.second); 
+      String message = section.first + " " + String(section.second.freeSpots) + " " + String(section.second.entranceScore); 
       softSerial.println(message);                                  
       Serial.println("Sent to Arduino: " + message);               
     }
@@ -72,13 +77,28 @@ void sendDataToDisplay() {
 }
 // Callback for receiving messages from the mesh
 void receivedCallback(uint32_t from, String &msg) {
-  Serial.printf("Received from %u: msg=%s\n", from, msg.c_str());
-  
-  int index = msg.indexOf(' ');
-  if (index != -1) {
-    String section = msg.substring(0, index);         // Extract section name
-    int spots = msg.substring(index + 1).toInt();    // Extract number of spots
-    sectionSpots[section] = spots;                   
+  Serial.printf("Received from %u msg=%s\n", from, msg.c_str());
+
+  unsigned int index = 0;
+  while (index < msg.length()) {
+    int spaceIdx = msg.indexOf(' ', index);
+    if (spaceIdx == -1) break;
+
+    String section = msg.substring(index, spaceIdx);
+    index = spaceIdx + 1;
+
+    spaceIdx = msg.indexOf(' ', index);
+    int spots = msg.substring(index, spaceIdx).toInt();
+    index = spaceIdx + 1;
+    
+    // read entrance Score
+    // Note: The End condition is for last score -> (spaceIdx == -1)
+    spaceIdx = msg.indexOf(' ', index); 
+    int entranceScore = (spaceIdx == -1) ? msg.substring(index).toInt() : msg.substring(index, spaceIdx).toInt();
+    index = (spaceIdx == -1) ? msg.length() : spaceIdx + 1;
+
+    sectionSpots[section] = {spots, entranceScore};
+    Serial.printf("Updated section %s: spots=%d, entrance=%d\n", section.c_str(), spots, entranceScore);
   }
 }
 // Task function to monitor the trigger pin
