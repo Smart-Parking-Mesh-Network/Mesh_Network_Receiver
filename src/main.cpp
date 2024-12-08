@@ -22,6 +22,7 @@ painlessMesh mesh;
 struct SectionData {
   int freeSpots = -1;
   int entranceScore = 0;
+  int elevatorScore = 0;
 };
 std::map<String, SectionData> sectionSpots;
 SoftwareSerial softSerial(RX_PIN, TX_PIN);
@@ -66,7 +67,7 @@ void loop() {
 void sendDataToDisplay() {
   if (!sectionSpots.empty()) {
     for (auto const& section : sectionSpots) {
-      String message = section.first + " " + String(section.second.freeSpots) + " " + String(section.second.entranceScore); 
+      String message = section.first + " " + String(section.second.freeSpots) + " " + String(section.second.entranceScore) + " " + String(section.second.elevatorScore); 
       softSerial.println(message);                                  
       Serial.println("Sent to Arduino: " + message);               
     }
@@ -91,15 +92,19 @@ void receivedCallback(uint32_t from, String &msg) {
     spaceIdx = msg.indexOf(' ', index);
     int spots = msg.substring(index, spaceIdx).toInt();
     index = spaceIdx + 1;
+
+    spaceIdx = msg.indexOf(' ', index);
+    int entranceScore = msg.substring(index, spaceIdx).toInt();
+    index = spaceIdx + 1;
     
     // read entrance Score
     // Note: The End condition is for last score -> (spaceIdx == -1)
     spaceIdx = msg.indexOf(' ', index); 
-    int entranceScore = (spaceIdx == -1) ? msg.substring(index).toInt() : msg.substring(index, spaceIdx).toInt();
+    int elevatorScore = (spaceIdx == -1) ? msg.substring(index).toInt() : msg.substring(index, spaceIdx).toInt();
     index = (spaceIdx == -1) ? msg.length() : spaceIdx + 1;
 
-    sectionSpots[section] = {spots, entranceScore};
-    Serial.printf("Updated section %s: spots=%d, entrance=%d\n", section.c_str(), spots, entranceScore);
+    sectionSpots[section] = {spots, entranceScore, elevatorScore};
+    Serial.printf("Updated section %s: spots=%d, entrance=%d, elevator=%d\n", section.c_str(), spots, entranceScore, elevatorScore);
   }
 }
 // Task function to monitor the trigger pin
